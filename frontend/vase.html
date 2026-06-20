@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Vase</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#0e0f12;font-family:system-ui,sans-serif;}
+    #app{position:absolute;inset:0;}
+    .panel{position:absolute;background:rgba(20,22,28,0.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:#e7e9ee;}
+    #props{top:16px;left:16px;padding:14px 16px;min-width:200px;font-size:13px;line-height:1.8;}
+    #props h3{margin:0 0 8px;font-size:11px;font-weight:600;color:#9aa3b2;letter-spacing:.06em;}
+    #props .row{display:flex;justify-content:space-between;gap:18px;}
+    #props .row span:last-child{color:#7fd1ff;font-variant-numeric:tabular-nums;}
+    #ctrl{bottom:24px;left:50%;transform:translateX(-50%);padding:12px 18px;display:flex;gap:22px;align-items:center;font-size:13px;color:#aab2c0;}
+    #ctrl label{display:flex;flex-direction:column;gap:5px;}
+    #ctrl input{width:150px;}
+    #status{position:absolute;top:16px;right:16px;color:#9a6b6b;font-size:12px;max-width:240px;text-align:right;}
+  </style>
+  <script type="importmap">
+  {"imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }}
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="props" class="panel">
+    <h3>PROPERTIES</h3>
+    <div class="row"><span>Height</span><span id="p-height">–</span></div>
+    <div class="row"><span>Max diameter</span><span id="p-maxd">–</span></div>
+    <div class="row"><span>Base diameter</span><span id="p-based">–</span></div>
+    <div class="row"><span>Neck diameter</span><span id="p-neckd">–</span></div>
+    <div class="row"><span>Volume</span><span id="p-vol">–</span></div>
+  </div>
+  <div id="ctrl" class="panel">
+    <label>Radius ×<input id="s-rad" type="range" min="0.3" max="2" step="0.01" value="1"></label>
+    <label>Height ×<input id="s-hgt" type="range" min="0.3" max="2" step="0.01" value="1"></label>
+  </div>
+  <div id="status">loading profile…</div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const app = document.getElementById('app');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0e0f12);
+
+    const renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(app.clientWidth, app.clientHeight);
+    app.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(50, app.clientWidth/app.clientHeight, 0.01, 1000);
+    camera.up.set(0,0,1);                 // z-up, same as the equation app
+    camera.position.set(7,-7,5);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const grid = new THREE.GridHelper(10,20,0x444c5a,0x23262e);
+    grid.rotation.x = Math.PI/2;
+    scene.add(grid);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x202428, 1.1));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+    sun.position.set(6,-4,10); scene.add(sun);
+
+    // same grid sampler as the equation tool — here u = theta, v = height
+    function sampleGrid(fn, uRange, vRange, ures, vres) {
+      const [u0,u1]=uRange,[v0,v1]=vRange;
+      const positions=new Float32Array(ures*vres*3); let p=0;
+      for(let i=0;i<ures;i++){const u=u0+(u1-u0)*(i/(ures-1));
+        for(let j=0;j<vres;j++){const v=v0+(v1-v0)*(j/(vres-1));
+          const [x,y,z]=fn(u,v); positions[p++]=x;positions[p++]=y;positions[p++]=z;}}
+      const indices=new Uint32Array((ures-1)*(vres-1)*6); let q=0;
+      for(let i=0;i<ures-1;i++)for(let j=0;j<vres-1;j++){
+        const a=i*vres+j,b=a+1,c=a+vres,d=c+1;
+        indices[q++]=a;indices[q++]=c;indices[q++]=b;
+        indices[q++]=b;indices[q++]=c;indices[q++]=d;}
+      return {positions,indices};
+    }
+
+    const mat = new THREE.MeshStandardMaterial({ color:0xdfe6f2, roughness:0.5, metalness:0.05, side:THREE.DoubleSide });
+    let mesh=null, H=[], R=[], displayScale=1;
+
+    function rAt(h){                       // linear-interpolate radius at height h
+      if(h<=H[0]) return R[0];
+      if(h>=H[H.length-1]) return R[R.length-1];
+      for(let i=1;i<H.length;i++) if(h<=H[i]){
+        const t=(h-H[i-1])/(H[i]-H[i-1]); return R[i-1]+t*(R[i]-R[i-1]); }
+      return R[R.length-1];
+    }
+
+    function rebuild(){
+      if(!H.length) return;
+      const radScale=+document.getElementById('s-rad').value;
+      const hgtScale=+document.getElementById('s-hgt').value;
+      const hmin=H[0],hmax=H[H.length-1],s=displayScale;
+      const geom=sampleGrid(
+        (theta,h)=>{ const r=rAt(h)*radScale*s, z=(h-hmin)*hgtScale*s;
+          return [r*Math.cos(theta), r*Math.sin(theta), z]; },
+        [0,Math.PI*2],[hmin,hmax],96,160);
+      const g=new THREE.BufferGeometry();
+      g.setAttribute('position',new THREE.BufferAttribute(geom.positions,3));
+      g.setIndex(new THREE.BufferAttribute(geom.indices,1));
+      g.computeVertexNormals();
+      if(mesh){scene.remove(mesh);mesh.geometry.dispose();}
+      mesh=new THREE.Mesh(g,mat); scene.add(mesh);
+      controls.target.set(0,0,(hmax-hmin)*hgtScale*s/2);
+      updateProps(radScale,hgtScale);
+    }
+
+    function updateProps(radScale,hgtScale){
+      const hmin=H[0],hmax=H[H.length-1];
+      const heightPx=(hmax-hmin)*hgtScale, maxR=Math.max(...R)*radScale, baseR=R[0]*radScale;
+      const neckR=Math.min(...R.slice(Math.floor(R.length*0.6)))*radScale;
+      let vol=0; for(let i=1;i<H.length;i++){const dh=(H[i]-H[i-1])*hgtScale,
+        rm=((R[i]+R[i-1])/2)*radScale; vol+=Math.PI*rm*rm*dh;}
+      const px=v=>Math.round(v)+' px';
+      p_height.textContent=px(heightPx); p_maxd.textContent=px(maxR*2);
+      p_based.textContent=px(baseR*2); p_neckd.textContent=px(neckR*2);
+      p_vol.textContent=(vol/1e6).toFixed(2)+' Mpx³';
+    }
+    const p_height=document.getElementById('p-height'),p_maxd=document.getElementById('p-maxd'),
+          p_based=document.getElementById('p-based'),p_neckd=document.getElementById('p-neckd'),
+          p_vol=document.getElementById('p-vol');
+
+    document.getElementById('s-rad').addEventListener('input',rebuild);
+    document.getElementById('s-hgt').addEventListener('input',rebuild);
+
+    fetch('/profile_fit.json').then(r=>r.json()).then(prof=>{
+      H=prof.heights; R=prof.radii;
+      if(H[0]>H[H.length-1]){H=H.slice().reverse();R=R.slice().reverse();}
+      displayScale=4/(H[H.length-1]-H[0]);   // make it ~4 units tall
+      document.getElementById('status').textContent='';
+      rebuild();
+    }).catch(e=>{document.getElementById('status').textContent=
+      'could not load /profile_fit.json — run the server from the Vis folder'; console.error(e);});
+
+    function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
+    animate();
+    window.addEventListener('resize',()=>{const w=app.clientWidth,h=app.clientHeight;
+      renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();});
+  </script>
+</body>
+</html>

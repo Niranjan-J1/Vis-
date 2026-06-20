@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vis</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0e0f12; font-family: system-ui, sans-serif; }
+    #app { position: absolute; inset: 0; }
+    #bar {
+      position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(20,22,28,0.72); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      padding: 8px 12px; width: min(520px, 86vw);
+    }
+    #bar .prefix { color: #6b7280; font: 14px ui-monospace, monospace; min-width: 22px; }
+    #bar input { flex: 1; background: transparent; border: 0; outline: none; color: #e7e9ee; font: 15px ui-monospace, monospace; }
+    #bar input::placeholder { color: #555b66; }
+    #bar.error { border-color: rgba(239,68,68,0.6); }
+    #modes {
+      position: absolute; top: 16px; right: 16px; display: flex; gap: 4px;
+      background: rgba(20,22,28,0.72); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 5px;
+    }
+    #modes button { border: 0; background: transparent; color: #aab2c0; font: 13px system-ui; padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+    #modes button.active { background: #2c63d6; color: #fff; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "mathjs": "https://esm.sh/mathjs@13"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="modes">
+    <button data-mode="2d">2D</button>
+    <button data-mode="3d">3D</button>
+  </div>
+  <div id="bar">
+    <span class="prefix">z =</span>
+    <input id="eq" type="text" spellcheck="false" placeholder="sin(x*y) · or sin(x) · Enter" />
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { compile, parse } from 'mathjs';
+
+    const app = document.getElementById('app');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0e0f12);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(app.clientWidth, app.clientHeight);
+    app.appendChild(renderer.domElement);
+
+    // --- z-up world (math convention): floor = x-y plane, up = z ---
+    const aspect0 = app.clientWidth / app.clientHeight;
+    const persp = new THREE.PerspectiveCamera(50, aspect0, 0.01, 1000);
+    persp.up.set(0, 0, 1);              // z is "up" for orbiting
+    persp.position.set(6, -6, 5);
+
+    const ORTHO = 4;
+    const ortho = new THREE.OrthographicCamera(-ORTHO, ORTHO, ORTHO, -ORTHO, 0.01, 1000);
+    ortho.up.set(0, 1, 0);             // looking straight down z at the x-y plane
+    ortho.position.set(0, 0, 10);
+    let camera = persp;
+
+    let controls;
+    function makeControls(canRotate) {
+      if (controls) controls.dispose();
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.enableRotate = canRotate;
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+
+    // grid on the x-y plane (rotate it off its default x-z plane)
+    const grid = new THREE.GridHelper(10, 20, 0x444c5a, 0x23262e);
+    grid.rotation.x = Math.PI / 2;
+    scene.add(grid);
+
+    // full axes through the origin, both directions (x red, y green, z blue)
+    function axis(a, b, color) {
+      const g = new THREE.BufferGeometry().setFromPoints([a, b]);
+      return new THREE.Line(g, new THREE.LineBasicMaterial({ color }));
+    }
+    const L = 5;
+    scene.add(axis(new THREE.Vector3(-L,0,0), new THREE.Vector3(L,0,0), 0xff5d5d)); // x
+    scene.add(axis(new THREE.Vector3(0,-L,0), new THREE.Vector3(0,L,0), 0x5dff7a)); // y
+    scene.add(axis(new THREE.Vector3(0,0,-L), new THREE.Vector3(0,0,L), 0x5d8cff)); // z
+
+    function fitOrtho() {
+      const a = app.clientWidth / app.clientHeight;
+      ortho.left = -ORTHO * a; ortho.right = ORTHO * a;
+      ortho.top = ORTHO; ortho.bottom = -ORTHO;
+      ortho.updateProjectionMatrix();
+    }
+
+    let viewMode = null, pinned = false;
+    function applyView(mode) {
+      if (mode !== viewMode) {
+        viewMode = mode;
+        if (mode === '2d') { camera = ortho; fitOrtho(); makeControls(false); }
+        else               { camera = persp;            makeControls(true);  }
+      }
+      document.querySelectorAll('#modes button').forEach(b =>
+        b.classList.toggle('active', b.dataset.mode === viewMode));
+    }
+    function autoView(mode) { if (!pinned) applyView(mode); }
+    document.querySelectorAll('#modes button').forEach(b =>
+      b.addEventListener('click', () => { pinned = true; applyView(b.dataset.mode); }));
+
+    // ---- surfaces:  z = f(x,y)  ->  point [x, y, f(x,y)] (rises up in z) ----
+    function sampleGrid(fn, uRange, vRange, res = 70) {
+      const [u0, u1] = uRange, [v0, v1] = vRange;
+      const positions = new Float32Array(res * res * 3);
+      let p = 0;
+      for (let i = 0; i < res; i++) {
+        const u = u0 + (u1 - u0) * (i / (res - 1));
+        for (let j = 0; j < res; j++) {
+          const v = v0 + (v1 - v0) * (j / (res - 1));
+          const [x, y, z] = fn(u, v);
+          positions[p++] = x; positions[p++] = y; positions[p++] = z;
+        }
+      }
+      const indices = new Uint32Array((res - 1) * (res - 1) * 6);
+      let q = 0;
+      for (let i = 0; i < res - 1; i++) {
+        for (let j = 0; j < res - 1; j++) {
+          const a = i * res + j, b = a + 1, c = a + res, d = c + 1;
+          indices[q++] = a; indices[q++] = c; indices[q++] = b;
+          indices[q++] = b; indices[q++] = c; indices[q++] = d;
+        }
+      }
+      return { positions, indices };
+    }
+    function buildMesh(geom) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(geom.positions, 3));
+      g.setIndex(new THREE.BufferAttribute(geom.indices, 1));
+      g.computeVertexNormals();
+      return new THREE.Mesh(g, new THREE.MeshNormalMaterial({ side: THREE.DoubleSide }));
+    }
+
+    // ---- curves:  y = f(x)  ->  point [x, f(x), 0] (lies in the x-y floor) ----
+    function sampleCurve(fn, range, res = 800) {
+      const [a, b] = range;
+      const positions = new Float32Array(res * 3);
+      let p = 0;
+      for (let i = 0; i < res; i++) {
+        const x = a + (b - a) * (i / (res - 1));
+        const [X, Y, Z] = fn(x);
+        positions[p++] = X; positions[p++] = Y; positions[p++] = Z;
+      }
+      return { positions };
+    }
+    function buildLine(geom) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(geom.positions, 3));
+      return new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0x5b9cff }));
+    }
+
+    // ---- equation pipeline ----
+    let currentObject = null;
+    const bar = document.getElementById('bar');
+    const input = document.getElementById('eq');
+    const prefix = bar.querySelector('.prefix');
+
+    function plot(exprText) {
+      let usesY, evaluate;
+      try {
+        const symbols = new Set(parse(exprText).filter(n => n.isSymbolNode).map(n => n.name));
+        usesY = symbols.has('y');
+        const code = compile(exprText);
+        code.evaluate({ x: 0, y: 0 });
+        evaluate = (x, y) => code.evaluate({ x, y });
+      } catch (e) { bar.classList.add('error'); return; }
+      bar.classList.remove('error');
+
+      let obj;
+      if (usesY) {
+        prefix.textContent = 'z =';
+        const geom = sampleGrid((x, y) => [x, y, evaluate(x, y)], [-3, 3], [-3, 3], 70);
+        obj = buildMesh(geom);
+        autoView('3d');
+      } else {
+        prefix.textContent = 'y =';
+        const curve = sampleCurve(x => [x, evaluate(x, 0), 0], [-3, 3], 800);
+        obj = buildLine(curve);
+        autoView('2d');
+      }
+
+      if (currentObject) { scene.remove(currentObject); currentObject.geometry.dispose(); }
+      currentObject = obj;
+      scene.add(obj);
+    }
+
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') plot(input.value.trim()); });
+
+    input.value = 'sin(sqrt(x^2 + y^2) * 3) * 0.6';
+    plot(input.value);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      const w = app.clientWidth, h = app.clientHeight;
+      renderer.setSize(w, h);
+      persp.aspect = w / h; persp.updateProjectionMatrix();
+      fitOrtho();
+    });
+  </script>
+</body>
+</html>
