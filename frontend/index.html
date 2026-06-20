@@ -5,46 +5,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vis</title>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #0e0f12; font-family: system-ui, sans-serif; }
-    #app { position: absolute; inset: 0; }
-    #bar {
-      position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 8px;
-      background: rgba(20,22,28,0.72); backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
-      padding: 8px 12px; width: min(520px, 86vw);
-    }
-    #bar .prefix { color: #6b7280; font: 14px ui-monospace, monospace; min-width: 22px; }
-    #bar input { flex: 1; background: transparent; border: 0; outline: none; color: #e7e9ee; font: 15px ui-monospace, monospace; }
-    #bar input::placeholder { color: #555b66; }
-    #bar.error { border-color: rgba(239,68,68,0.6); }
-    #modes {
-      position: absolute; top: 16px; right: 16px; display: flex; gap: 4px;
-      background: rgba(20,22,28,0.72); backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 5px;
-    }
-    #modes button { border: 0; background: transparent; color: #aab2c0; font: 13px system-ui; padding: 6px 12px; border-radius: 7px; cursor: pointer; }
-    #modes button.active { background: #2c63d6; color: #fff; }
+    html,body{margin:0;height:100%;overflow:hidden;background:#0e0f12;font-family:system-ui,sans-serif;}
+    #app{position:absolute;inset:0;}
+    .panel{position:absolute;background:rgba(20,22,28,0.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:#e7e9ee;}
+    #bar{left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;width:min(560px,90vw);}
+    #bar .prefix{color:#6b7280;font:14px ui-monospace,monospace;min-width:22px;}
+    #bar input.eq{flex:1;background:transparent;border:0;outline:none;color:#e7e9ee;font:15px ui-monospace,monospace;}
+    #bar input.eq::placeholder{color:#555b66;}
+    #bar.error{border-color:rgba(239,68,68,0.6);}
+    #upload{display:flex;align-items:center;gap:6px;border:0;cursor:pointer;background:#2c63d6;color:#fff;font:13px system-ui;padding:8px 12px;border-radius:9px;}
+    #upload:hover{background:#3670e6;} #upload svg{width:15px;height:15px;}
+    #modes{top:16px;right:16px;display:flex;gap:4px;padding:5px;}
+    #modes button{border:0;background:transparent;color:#aab2c0;font:13px system-ui;padding:6px 12px;border-radius:7px;cursor:pointer;}
+    #modes button.active{background:#2c63d6;color:#fff;}
+    #props{top:16px;left:16px;padding:14px 16px;min-width:210px;font-size:13px;display:none;}
+    #props h3{margin:0 0 8px;font-size:11px;font-weight:600;color:#9aa3b2;letter-spacing:.06em;}
+    #props .row{display:flex;justify-content:space-between;gap:18px;line-height:1.9;}
+    #props .row span:last-child{color:#7fd1ff;font-variant-numeric:tabular-nums;}
+    #props .ctl{margin-top:10px;display:flex;flex-direction:column;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px;}
+    #props label{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#aab2c0;font-size:12px;}
+    #props input[type=range]{width:120px;}
+    #toast{bottom:84px;left:50%;transform:translateX(-50%);padding:8px 14px;font-size:13px;color:#cdd3dc;display:none;}
   </style>
   <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-      "mathjs": "https://esm.sh/mathjs@13"
-    }
-  }
+  {"imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "mathjs":"https://esm.sh/mathjs@13"
+  }}
   </script>
 </head>
 <body>
   <div id="app"></div>
-  <div id="modes">
-    <button data-mode="2d">2D</button>
-    <button data-mode="3d">3D</button>
+  <div id="modes" class="panel"><button data-mode="2d">2D</button><button data-mode="3d">3D</button></div>
+  <div id="props" class="panel">
+    <h3>PROPERTIES</h3>
+    <div class="row"><span>Height</span><span id="p-height">–</span></div>
+    <div class="row"><span>Max diameter</span><span id="p-maxd">–</span></div>
+    <div class="row"><span>Base diameter</span><span id="p-based">–</span></div>
+    <div class="row"><span>Neck diameter</span><span id="p-neckd">–</span></div>
+    <div class="row"><span>Volume</span><span id="p-vol">–</span></div>
+    <div class="ctl">
+      <label>Radius ×<input id="s-rad" type="range" min="0.3" max="2" step="0.01" value="1"></label>
+      <label>Height ×<input id="s-hgt" type="range" min="0.3" max="2" step="0.01" value="1"></label>
+    </div>
   </div>
-  <div id="bar">
+  <div id="toast" class="panel"></div>
+  <div id="bar" class="panel">
     <span class="prefix">z =</span>
-    <input id="eq" type="text" spellcheck="false" placeholder="sin(x*y) · or sin(x) · Enter" />
+    <input class="eq" id="eq" type="text" spellcheck="false" placeholder="sin(x*y) · or sin(x) · Enter" />
+    <button id="upload" title="Upload a photo of an object">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/></svg>Image
+    </button>
+    <input id="file" type="file" accept="image/*" hidden />
   </div>
 
   <script type="module">
@@ -53,176 +66,124 @@
     import { compile, parse } from 'mathjs';
 
     const app = document.getElementById('app');
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0e0f12);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(app.clientWidth, app.clientHeight);
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0e0f12);
+    const renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setPixelRatio(window.devicePixelRatio); renderer.setSize(app.clientWidth, app.clientHeight);
     app.appendChild(renderer.domElement);
 
-    // --- z-up world (math convention): floor = x-y plane, up = z ---
-    const aspect0 = app.clientWidth / app.clientHeight;
-    const persp = new THREE.PerspectiveCamera(50, aspect0, 0.01, 1000);
-    persp.up.set(0, 0, 1);              // z is "up" for orbiting
-    persp.position.set(6, -6, 5);
-
-    const ORTHO = 4;
-    const ortho = new THREE.OrthographicCamera(-ORTHO, ORTHO, ORTHO, -ORTHO, 0.01, 1000);
-    ortho.up.set(0, 1, 0);             // looking straight down z at the x-y plane
-    ortho.position.set(0, 0, 10);
+    const persp = new THREE.PerspectiveCamera(50, app.clientWidth/app.clientHeight, 0.01, 1000);
+    persp.up.set(0,0,1); persp.position.set(6,-6,5);
+    const ORTHO=4;
+    const ortho = new THREE.OrthographicCamera(-ORTHO,ORTHO,ORTHO,-ORTHO,0.01,1000);
+    ortho.up.set(0,1,0); ortho.position.set(0,0,10);
     let camera = persp;
-
+    let targetPoint = new THREE.Vector3(0,0,0);
     let controls;
-    function makeControls(canRotate) {
-      if (controls) controls.dispose();
+    function makeControls(canRotate){
+      if(controls) controls.dispose();
       controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.enableRotate = canRotate;
-      controls.target.set(0, 0, 0);
-      controls.update();
+      controls.enableDamping=true; controls.enableRotate=canRotate;
+      controls.target.copy(targetPoint); controls.update();
     }
 
-    // grid on the x-y plane (rotate it off its default x-z plane)
-    const grid = new THREE.GridHelper(10, 20, 0x444c5a, 0x23262e);
-    grid.rotation.x = Math.PI / 2;
-    scene.add(grid);
+    const grid = new THREE.GridHelper(10,20,0x444c5a,0x23262e); grid.rotation.x=Math.PI/2; scene.add(grid);
+    const axis=(a,b,c)=>new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:c}));
+    const L=5;
+    scene.add(axis(new THREE.Vector3(-L,0,0),new THREE.Vector3(L,0,0),0xff5d5d));
+    scene.add(axis(new THREE.Vector3(0,-L,0),new THREE.Vector3(0,L,0),0x5dff7a));
+    scene.add(axis(new THREE.Vector3(0,0,-L),new THREE.Vector3(0,0,L),0x5d8cff));
+    scene.add(new THREE.HemisphereLight(0xffffff,0x202428,1.1));
+    const sun=new THREE.DirectionalLight(0xffffff,1.3); sun.position.set(6,-4,10); scene.add(sun);
 
-    // full axes through the origin, both directions (x red, y green, z blue)
-    function axis(a, b, color) {
-      const g = new THREE.BufferGeometry().setFromPoints([a, b]);
-      return new THREE.Line(g, new THREE.LineBasicMaterial({ color }));
+    function fitOrtho(){const a=app.clientWidth/app.clientHeight;ortho.left=-ORTHO*a;ortho.right=ORTHO*a;ortho.top=ORTHO;ortho.bottom=-ORTHO;ortho.updateProjectionMatrix();}
+    let viewMode=null, pinned=false;
+    function applyView(mode){
+      if(mode!==viewMode){viewMode=mode;
+        if(mode==='2d'){camera=ortho;fitOrtho();makeControls(false);}
+        else{camera=persp;makeControls(true);}}
+      document.querySelectorAll('#modes button').forEach(b=>b.classList.toggle('active',b.dataset.mode===viewMode));
     }
-    const L = 5;
-    scene.add(axis(new THREE.Vector3(-L,0,0), new THREE.Vector3(L,0,0), 0xff5d5d)); // x
-    scene.add(axis(new THREE.Vector3(0,-L,0), new THREE.Vector3(0,L,0), 0x5dff7a)); // y
-    scene.add(axis(new THREE.Vector3(0,0,-L), new THREE.Vector3(0,0,L), 0x5d8cff)); // z
+    const autoView=m=>{if(!pinned)applyView(m);};
+    document.querySelectorAll('#modes button').forEach(b=>b.addEventListener('click',()=>{pinned=true;applyView(b.dataset.mode);}));
 
-    function fitOrtho() {
-      const a = app.clientWidth / app.clientHeight;
-      ortho.left = -ORTHO * a; ortho.right = ORTHO * a;
-      ortho.top = ORTHO; ortho.bottom = -ORTHO;
-      ortho.updateProjectionMatrix();
+    function sampleGrid(fn,uRange,vRange,ures,vres){
+      const [u0,u1]=uRange,[v0,v1]=vRange;const positions=new Float32Array(ures*vres*3);let p=0;
+      for(let i=0;i<ures;i++){const u=u0+(u1-u0)*(i/(ures-1));
+        for(let j=0;j<vres;j++){const v=v0+(v1-v0)*(j/(vres-1));const [x,y,z]=fn(u,v);positions[p++]=x;positions[p++]=y;positions[p++]=z;}}
+      const indices=new Uint32Array((ures-1)*(vres-1)*6);let q=0;
+      for(let i=0;i<ures-1;i++)for(let j=0;j<vres-1;j++){const a=i*vres+j,b=a+1,c=a+vres,d=c+1;
+        indices[q++]=a;indices[q++]=c;indices[q++]=b;indices[q++]=b;indices[q++]=c;indices[q++]=d;}
+      return {positions,indices};
     }
+    const bufferGeom=g=>{const G=new THREE.BufferGeometry();G.setAttribute('position',new THREE.BufferAttribute(g.positions,3));G.setIndex(new THREE.BufferAttribute(g.indices,1));G.computeVertexNormals();return G;};
+    const normalMat=new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
+    const modelMat=new THREE.MeshStandardMaterial({color:0xdfe6f2,roughness:0.5,metalness:0.05,side:THREE.DoubleSide});
+    const lineMat=new THREE.LineBasicMaterial({color:0x5b9cff});
+    const sampleCurve=(fn,range,res)=>{const [a,b]=range;const positions=new Float32Array(res*3);let p=0;
+      for(let i=0;i<res;i++){const x=a+(b-a)*(i/(res-1));const [X,Y,Z]=fn(x);positions[p++]=X;positions[p++]=Y;positions[p++]=Z;}return {positions};};
 
-    let viewMode = null, pinned = false;
-    function applyView(mode) {
-      if (mode !== viewMode) {
-        viewMode = mode;
-        if (mode === '2d') { camera = ortho; fitOrtho(); makeControls(false); }
-        else               { camera = persp;            makeControls(true);  }
-      }
-      document.querySelectorAll('#modes button').forEach(b =>
-        b.classList.toggle('active', b.dataset.mode === viewMode));
+    let currentObject=null, model=null;
+    function setObject(obj){if(currentObject){scene.remove(currentObject);currentObject.geometry.dispose();}currentObject=obj;scene.add(obj);}
+
+    const bar=document.getElementById('bar'),input=document.getElementById('eq'),prefix=bar.querySelector('.prefix'),propsPanel=document.getElementById('props');
+    function plot(t){
+      let usesY,ev;
+      try{const sym=new Set(parse(t).filter(n=>n.isSymbolNode).map(n=>n.name));usesY=sym.has('y');
+        const code=compile(t);code.evaluate({x:0,y:0});ev=(x,y)=>code.evaluate({x,y});}
+      catch(e){bar.classList.add('error');return;}
+      bar.classList.remove('error'); model=null; propsPanel.style.display='none'; targetPoint.set(0,0,0);
+      if(usesY){prefix.textContent='z =';
+        setObject(new THREE.Mesh(bufferGeom(sampleGrid((x,y)=>[x,y,ev(x,y)],[-3,3],[-3,3],70,70)),normalMat));autoView('3d');}
+      else{prefix.textContent='y =';
+        const G=new THREE.BufferGeometry();G.setAttribute('position',new THREE.BufferAttribute(sampleCurve(x=>[x,ev(x,0),0],[-3,3],800).positions,3));
+        setObject(new THREE.Line(G,lineMat));autoView('2d');}
+      controls.target.copy(targetPoint);
     }
-    function autoView(mode) { if (!pinned) applyView(mode); }
-    document.querySelectorAll('#modes button').forEach(b =>
-      b.addEventListener('click', () => { pinned = true; applyView(b.dataset.mode); }));
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')plot(input.value.trim());});
 
-    // ---- surfaces:  z = f(x,y)  ->  point [x, y, f(x,y)] (rises up in z) ----
-    function sampleGrid(fn, uRange, vRange, res = 70) {
-      const [u0, u1] = uRange, [v0, v1] = vRange;
-      const positions = new Float32Array(res * res * 3);
-      let p = 0;
-      for (let i = 0; i < res; i++) {
-        const u = u0 + (u1 - u0) * (i / (res - 1));
-        for (let j = 0; j < res; j++) {
-          const v = v0 + (v1 - v0) * (j / (res - 1));
-          const [x, y, z] = fn(u, v);
-          positions[p++] = x; positions[p++] = y; positions[p++] = z;
-        }
-      }
-      const indices = new Uint32Array((res - 1) * (res - 1) * 6);
-      let q = 0;
-      for (let i = 0; i < res - 1; i++) {
-        for (let j = 0; j < res - 1; j++) {
-          const a = i * res + j, b = a + 1, c = a + res, d = c + 1;
-          indices[q++] = a; indices[q++] = c; indices[q++] = b;
-          indices[q++] = b; indices[q++] = c; indices[q++] = d;
-        }
-      }
-      return { positions, indices };
-    }
-    function buildMesh(geom) {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(geom.positions, 3));
-      g.setIndex(new THREE.BufferAttribute(geom.indices, 1));
-      g.computeVertexNormals();
-      return new THREE.Mesh(g, new THREE.MeshNormalMaterial({ side: THREE.DoubleSide }));
-    }
-
-    // ---- curves:  y = f(x)  ->  point [x, f(x), 0] (lies in the x-y floor) ----
-    function sampleCurve(fn, range, res = 800) {
-      const [a, b] = range;
-      const positions = new Float32Array(res * 3);
-      let p = 0;
-      for (let i = 0; i < res; i++) {
-        const x = a + (b - a) * (i / (res - 1));
-        const [X, Y, Z] = fn(x);
-        positions[p++] = X; positions[p++] = Y; positions[p++] = Z;
-      }
-      return { positions };
-    }
-    function buildLine(geom) {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(geom.positions, 3));
-      return new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0x5b9cff }));
-    }
-
-    // ---- equation pipeline ----
-    let currentObject = null;
-    const bar = document.getElementById('bar');
-    const input = document.getElementById('eq');
-    const prefix = bar.querySelector('.prefix');
-
-    function plot(exprText) {
-      let usesY, evaluate;
-      try {
-        const symbols = new Set(parse(exprText).filter(n => n.isSymbolNode).map(n => n.name));
-        usesY = symbols.has('y');
-        const code = compile(exprText);
-        code.evaluate({ x: 0, y: 0 });
-        evaluate = (x, y) => code.evaluate({ x, y });
-      } catch (e) { bar.classList.add('error'); return; }
-      bar.classList.remove('error');
-
-      let obj;
-      if (usesY) {
-        prefix.textContent = 'z =';
-        const geom = sampleGrid((x, y) => [x, y, evaluate(x, y)], [-3, 3], [-3, 3], 70);
-        obj = buildMesh(geom);
-        autoView('3d');
-      } else {
-        prefix.textContent = 'y =';
-        const curve = sampleCurve(x => [x, evaluate(x, 0), 0], [-3, 3], 800);
-        obj = buildLine(curve);
-        autoView('2d');
-      }
-
-      if (currentObject) { scene.remove(currentObject); currentObject.geometry.dispose(); }
-      currentObject = obj;
-      scene.add(obj);
-    }
-
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') plot(input.value.trim()); });
-
-    input.value = 'sin(sqrt(x^2 + y^2) * 3) * 0.6';
-    plot(input.value);
-
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    window.addEventListener('resize', () => {
-      const w = app.clientWidth, h = app.clientHeight;
-      renderer.setSize(w, h);
-      persp.aspect = w / h; persp.updateProjectionMatrix();
-      fitOrtho();
+    const fileInput=document.getElementById('file'),toast=document.getElementById('toast');
+    const showToast=(m,err)=>{toast.textContent=m;toast.style.display='block';toast.style.color=err?'#f0a0a0':'#cdd3dc';};
+    const hideToast=()=>toast.style.display='none';
+    document.getElementById('upload').addEventListener('click',()=>fileInput.click());
+    fileInput.addEventListener('change',async()=>{
+      const f=fileInput.files[0]; if(!f)return; showToast('processing photo…');
+      try{const fd=new FormData();fd.append('image',f);
+        const res=await fetch('/api/model',{method:'POST',body:fd});
+        if(!res.ok)throw new Error('server '+res.status);
+        hideToast(); showModel(await res.json());
+      }catch(err){showToast('upload failed — is the server running? ('+err.message+')',true);}
+      fileInput.value='';
     });
+
+    function showModel(prof){
+      let H=prof.heights,R=prof.radii;
+      if(H[0]>H[H.length-1]){H=H.slice().reverse();R=R.slice().reverse();}
+      model={H,R,scale:4/(H[H.length-1]-H[0])};
+      document.getElementById('s-rad').value=1; document.getElementById('s-hgt').value=1;
+      propsPanel.style.display='block'; applyView('3d'); rebuildModel();
+    }
+    const rAt=(H,R,h)=>{if(h<=H[0])return R[0];if(h>=H[H.length-1])return R[R.length-1];
+      for(let i=1;i<H.length;i++)if(h<=H[i]){const t=(h-H[i-1])/(H[i]-H[i-1]);return R[i-1]+t*(R[i]-R[i-1]);}return R[R.length-1];};
+    function rebuildModel(){
+      if(!model)return; const {H,R,scale}=model;
+      const rs=+document.getElementById('s-rad').value,hs=+document.getElementById('s-hgt').value;
+      const hmin=H[0],hmax=H[H.length-1];
+      setObject(new THREE.Mesh(bufferGeom(sampleGrid((th,h)=>{const r=rAt(H,R,h)*rs*scale,z=(h-hmin)*hs*scale;return [r*Math.cos(th),r*Math.sin(th),z];},[0,Math.PI*2],[hmin,hmax],96,160)),modelMat));
+      targetPoint.set(0,0,(hmax-hmin)*hs*scale/2); controls.target.copy(targetPoint); updateProps(rs,hs);
+    }
+    document.getElementById('s-rad').addEventListener('input',rebuildModel);
+    document.getElementById('s-hgt').addEventListener('input',rebuildModel);
+    function updateProps(rs,hs){
+      const {H,R}=model;const hmin=H[0],hmax=H[H.length-1];
+      const hgt=(hmax-hmin)*hs,maxR=Math.max(...R)*rs,baseR=R[0]*rs,neckR=Math.min(...R.slice(Math.floor(R.length*0.6)))*rs;
+      let vol=0;for(let i=1;i<H.length;i++){const dh=(H[i]-H[i-1])*hs,rm=((R[i]+R[i-1])/2)*rs;vol+=Math.PI*rm*rm*dh;}
+      const px=v=>Math.round(v)+' px',set=(id,t)=>document.getElementById(id).textContent=t;
+      set('p-height',px(hgt));set('p-maxd',px(maxR*2));set('p-based',px(baseR*2));set('p-neckd',px(neckR*2));set('p-vol',(vol/1e6).toFixed(2)+' Mpx³');
+    }
+
+    input.value='sin(sqrt(x^2 + y^2) * 3) * 0.6'; plot(input.value);
+    (function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);})();
+    window.addEventListener('resize',()=>{const w=app.clientWidth,h=app.clientHeight;renderer.setSize(w,h);persp.aspect=w/h;persp.updateProjectionMatrix();fitOrtho();});
   </script>
 </body>
 </html>
