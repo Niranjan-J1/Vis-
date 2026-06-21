@@ -116,7 +116,10 @@ flowchart LR
 ```
 
 <img width="1873" height="1141" alt="image" src="https://github.com/user-attachments/assets/65b47c3e-d243-4280-9c4c-70e339ff6d77" />
-<img width="1873" height="1141" alt="image" src="https://github.com/user-attachments/assets/small-plastic-water-bottle-isolated-white-background-small-plastic-water-bottle-355782998.webp" />
+<img width="521" height="809" alt="image" src="https://github.com/user-attachments/assets/206922a1-dd55-48e7-bfa9-e4f88486cfa7" />
+<img width="1917" height="1156" alt="image" src="https://github.com/user-attachments/assets/119bcad0-2d29-4687-9ec8-2b78606e2694" />
+
+
 
 
 **One geometry contract.** Every producer emits `{ positions: Float32Array, indices: Uint32Array }`, consumed by a single renderer. A shared `sampleGrid(fn, uRange, vRange, uRes, vRes)` walks a parameter grid and triangulates it; the only thing that changes is the function:
