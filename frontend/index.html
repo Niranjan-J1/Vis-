@@ -1,31 +1,82 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vis</title>
   <style>
-    html,body{margin:0;height:100%;overflow:hidden;background:#0e0f12;font-family:system-ui,sans-serif;}
+    :root{
+      --bg:#0d0e11; --surface:rgba(20,22,27,.86); --surface-2:#1d2028;
+      --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.13);
+      --text:#e8eaee; --dim:#8b92a0; --faint:#5b6270;
+      --accent:#4d8dff; --data:#79c0ff; --radius:11px;
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;}
     #app{position:absolute;inset:0;}
-    .panel{position:absolute;background:rgba(20,22,28,0.72);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:#e7e9ee;}
-    #bar{left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;width:min(560px,90vw);}
-    #bar .prefix{color:#6b7280;font:14px ui-monospace,monospace;min-width:22px;}
-    #bar input.eq{flex:1;background:transparent;border:0;outline:none;color:#e7e9ee;font:15px ui-monospace,monospace;}
-    #bar input.eq::placeholder{color:#555b66;}
-    #bar.error{border-color:rgba(239,68,68,0.6);}
-    #upload{display:flex;align-items:center;gap:6px;border:0;cursor:pointer;background:#2c63d6;color:#fff;font:13px system-ui;padding:8px 12px;border-radius:9px;}
-    #upload:hover{background:#3670e6;} #upload svg{width:15px;height:15px;}
-    #modes{top:16px;right:16px;display:flex;gap:4px;padding:5px;}
-    #modes button{border:0;background:transparent;color:#aab2c0;font:13px system-ui;padding:6px 12px;border-radius:7px;cursor:pointer;}
-    #modes button.active{background:#2c63d6;color:#fff;}
-    #props{top:16px;left:16px;padding:14px 16px;min-width:210px;font-size:13px;display:none;}
-    #props h3{margin:0 0 8px;font-size:11px;font-weight:600;color:#9aa3b2;letter-spacing:.06em;}
-    #props .row{display:flex;justify-content:space-between;gap:18px;line-height:1.9;}
-    #props .row span:last-child{color:#7fd1ff;font-variant-numeric:tabular-nums;}
-    #props .ctl{margin-top:10px;display:flex;flex-direction:column;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px;}
-    #props label{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#aab2c0;font-size:12px;}
-    #props input[type=range]{width:120px;}
-    #toast{bottom:84px;left:50%;transform:translateX(-50%);padding:8px 14px;font-size:13px;color:#cdd3dc;display:none;}
+    .panel{position:absolute;background:var(--surface);backdrop-filter:blur(16px);
+      border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 12px 40px rgba(0,0,0,.42);}
+
+    #brand{position:absolute;top:20px;left:22px;font:600 15px system-ui;letter-spacing:-.01em;color:var(--text);}
+    #brand::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle;}
+
+    #modes{top:18px;right:18px;display:flex;padding:3px;gap:2px;border-radius:9px;}
+    #modes button{border:0;background:transparent;color:var(--dim);font:500 12px system-ui;
+      padding:5px 15px;border-radius:7px;cursor:pointer;transition:background .15s,color .15s;}
+    #modes button:hover{color:var(--text);}
+    #modes button.active{background:var(--accent);color:#fff;}
+
+    #inspector{top:60px;right:18px;width:250px;max-height:calc(100vh - 78px);overflow-y:auto;
+      display:none;flex-direction:column;}
+    #inspector::-webkit-scrollbar{width:8px;}
+    #inspector::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px;}
+    #inspector::-webkit-scrollbar-track{background:transparent;}
+    #inspector .sec{padding:15px 16px;border-bottom:1px solid var(--line);}
+    #inspector .sec:last-child{border-bottom:0;}
+    .eyebrow{font:600 10px/1 system-ui;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:11px;}
+    .row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:3px 0;}
+    .row .k{font-size:12.5px;color:var(--dim);}
+    .row .v{font:13px ui-monospace,monospace;color:var(--data);font-variant-numeric:tabular-nums;}
+    .field{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .field label{font-size:12.5px;color:var(--dim);}
+    .ig{display:flex;align-items:center;gap:7px;}
+    .unit{font-size:11px;color:var(--faint);}
+    input[type=number]{width:60px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:7px;
+      color:var(--text);font:12px ui-monospace,monospace;padding:5px 8px;outline:none;}
+    input[type=number]:focus{border-color:var(--accent);}
+    .slider .lab{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-bottom:7px;}
+    .slider .lab span:last-child{font-family:ui-monospace,monospace;color:var(--dim);}
+    input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;background:var(--surface-2);outline:none;}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+    input[type=range]::-moz-range-thumb{width:14px;height:14px;border:2px solid var(--bg);border-radius:50%;background:var(--accent);cursor:pointer;}
+    #ed-svg{display:block;margin:0 auto;width:148px;height:296px;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:8px;touch-action:none;}
+    .tools{display:flex;gap:8px;margin-top:12px;}
+    .btn{flex:1;border:1px solid var(--line-2);border-radius:8px;padding:8px;font:500 12px system-ui;cursor:pointer;
+      background:var(--surface-2);color:var(--dim);transition:background .15s,color .15s;}
+    .btn:hover{background:#262a33;color:var(--text);}
+    .btn.on{background:var(--accent);color:#fff;border-color:transparent;}
+    #export{width:100%;border:0;border-radius:9px;padding:11px;font:600 13px system-ui;cursor:pointer;
+      background:var(--accent);color:#fff;transition:background .15s;}
+    #export:hover{background:#5d99ff;}
+
+    #bar{left:50%;bottom:24px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;
+      padding:7px 8px 7px 16px;width:min(540px,92vw);border-radius:12px;}
+    #bar .prefix{color:var(--faint);font:13px ui-monospace,monospace;}
+    #bar input.eq{flex:1;background:transparent;border:0;outline:none;color:var(--text);font:14px ui-monospace,monospace;}
+    #bar input.eq::placeholder{color:var(--faint);}
+    #bar.error{border-color:rgba(239,68,68,.55);}
+    #upload{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:0;border-radius:9px;
+      background:var(--surface-2);color:var(--dim);cursor:pointer;transition:background .15s,color .15s;}
+    #upload:hover{background:#262a33;color:var(--text);} #upload svg{width:16px;height:16px;}
+
+    #toast{bottom:84px;left:50%;transform:translateX(-50%);padding:9px 16px;font-size:12.5px;color:var(--dim);border-radius:9px;display:none;}
+
+    :focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+    @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+    @media (max-width:560px){
+      #inspector{left:12px;right:12px;width:auto;top:auto;bottom:86px;max-height:54vh;}
+      #modes{top:14px;right:14px;} #brand{top:16px;left:16px;} #bar{width:calc(100vw - 24px);}
+    }
   </style>
   <script type="importmap">
   {"imports":{
@@ -37,25 +88,43 @@
 </head>
 <body>
   <div id="app"></div>
+  <div id="brand">Vis</div>
   <div id="modes" class="panel"><button data-mode="2d">2D</button><button data-mode="3d">3D</button></div>
-  <div id="props" class="panel">
-    <h3>PROPERTIES</h3>
-    <div class="row"><span>Height</span><span id="p-height">–</span></div>
-    <div class="row"><span>Max diameter</span><span id="p-maxd">–</span></div>
-    <div class="row"><span>Base diameter</span><span id="p-based">–</span></div>
-    <div class="row"><span>Neck diameter</span><span id="p-neckd">–</span></div>
-    <div class="row"><span>Volume</span><span id="p-vol">–</span></div>
-    <div class="ctl">
-      <label>Radius ×<input id="s-rad" type="range" min="0.3" max="2" step="0.01" value="1"></label>
-      <label>Height ×<input id="s-hgt" type="range" min="0.3" max="2" step="0.01" value="1"></label>
+
+  <aside id="inspector" class="panel">
+    <div class="sec">
+      <div class="eyebrow">Measurements</div>
+      <div class="row"><span class="k">Height</span><span class="v" id="p-height">–</span></div>
+      <div class="row"><span class="k">Max diameter</span><span class="v" id="p-maxd">–</span></div>
+      <div class="row"><span class="k">Base diameter</span><span class="v" id="p-based">–</span></div>
+      <div class="row"><span class="k">Neck diameter</span><span class="v" id="p-neckd">–</span></div>
+      <div class="row"><span class="k">Volume</span><span class="v" id="p-vol">–</span></div>
     </div>
-  </div>
+    <div class="sec">
+      <div class="eyebrow">Scale</div>
+      <div class="field"><label for="cal-h">Real height</label>
+        <span class="ig"><input id="cal-h" type="number" min="0" step="0.1" placeholder="—"><span class="unit">cm</span></span></div>
+    </div>
+    <div class="sec">
+      <div class="eyebrow">Transform</div>
+      <div class="slider"><div class="lab"><span>Radius</span><span id="s-rad-v">1.00×</span></div><input id="s-rad" type="range" min="0.3" max="2" step="0.01" value="1"></div>
+      <div class="slider" style="margin-top:12px"><div class="lab"><span>Height</span><span id="s-hgt-v">1.00×</span></div><input id="s-hgt" type="range" min="0.3" max="2" step="0.01" value="1"></div>
+    </div>
+    <div class="sec">
+      <div class="eyebrow">Profile</div>
+      <svg id="ed-svg" viewBox="0 0 180 360"></svg>
+      <div class="tools"><button id="ed-sculpt" class="btn">Sculpt</button><button id="ed-reset" class="btn">Reset</button></div>
+    </div>
+    <div class="sec"><button id="export">Export STL</button></div>
+  </aside>
+
   <div id="toast" class="panel"></div>
+
   <div id="bar" class="panel">
     <span class="prefix">z =</span>
-    <input class="eq" id="eq" type="text" spellcheck="false" placeholder="sin(x*y) · or sin(x) · Enter" />
+    <input class="eq" id="eq" type="text" spellcheck="false" placeholder="sin(x*y)   ·   sin(x)" />
     <button id="upload" title="Upload a photo of an object">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/></svg>Image
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/></svg>
     </button>
     <input id="file" type="file" accept="image/*" hidden />
   </div>
@@ -63,30 +132,25 @@
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { STLExporter } from 'three/addons/exporters/STLExporter.js';
     import { compile, parse } from 'mathjs';
 
-    const app = document.getElementById('app');
-    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0e0f12);
-    const renderer = new THREE.WebGLRenderer({ antialias:true });
-    renderer.setPixelRatio(window.devicePixelRatio); renderer.setSize(app.clientWidth, app.clientHeight);
+    const app=document.getElementById('app');
+    const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0d0e11);
+    const renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setPixelRatio(window.devicePixelRatio); renderer.setSize(app.clientWidth,app.clientHeight);
     app.appendChild(renderer.domElement);
 
-    const persp = new THREE.PerspectiveCamera(50, app.clientWidth/app.clientHeight, 0.01, 1000);
+    const persp=new THREE.PerspectiveCamera(50,app.clientWidth/app.clientHeight,0.01,1000);
     persp.up.set(0,0,1); persp.position.set(6,-6,5);
     const ORTHO=4;
-    const ortho = new THREE.OrthographicCamera(-ORTHO,ORTHO,ORTHO,-ORTHO,0.01,1000);
+    const ortho=new THREE.OrthographicCamera(-ORTHO,ORTHO,ORTHO,-ORTHO,0.01,1000);
     ortho.up.set(0,1,0); ortho.position.set(0,0,10);
-    let camera = persp;
-    let targetPoint = new THREE.Vector3(0,0,0);
-    let controls;
-    function makeControls(canRotate){
-      if(controls) controls.dispose();
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping=true; controls.enableRotate=canRotate;
-      controls.target.copy(targetPoint); controls.update();
-    }
+    let camera=persp, targetPoint=new THREE.Vector3(0,0,0), controls;
+    function makeControls(rot){if(controls)controls.dispose();controls=new OrbitControls(camera,renderer.domElement);
+      controls.enableDamping=true;controls.enableRotate=rot&&!sculpt;controls.target.copy(targetPoint);controls.update();}
 
-    const grid = new THREE.GridHelper(10,20,0x444c5a,0x23262e); grid.rotation.x=Math.PI/2; scene.add(grid);
+    const grid=new THREE.GridHelper(10,20,0x444c5a,0x21242c); grid.rotation.x=Math.PI/2; scene.add(grid);
     const axis=(a,b,c)=>new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:c}));
     const L=5;
     scene.add(axis(new THREE.Vector3(-L,0,0),new THREE.Vector3(L,0,0),0xff5d5d));
@@ -95,91 +159,229 @@
     scene.add(new THREE.HemisphereLight(0xffffff,0x202428,1.1));
     const sun=new THREE.DirectionalLight(0xffffff,1.3); sun.position.set(6,-4,10); scene.add(sun);
 
+    function makeLabel(text,color,onTop){
+      const cw=256,ch=128,c=document.createElement('canvas');c.width=cw;c.height=ch;
+      const x=c.getContext('2d');x.fillStyle=color||'#cdd3dc';x.font='bold 70px system-ui';x.textAlign='center';x.textBaseline='middle';
+      x.fillText(text,cw/2,ch/2);
+      const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+      const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:!onTop,depthWrite:false});
+      const s=new THREE.Sprite(m);s.scale.set(0.7,0.35,1);return s;
+    }
+    const xT=new THREE.Group(),yT=new THREE.Group(),zT=new THREE.Group();
+    for(let i=-4;i<=4;i++){ if(i===0)continue;let s;
+      s=makeLabel(String(i),'#7f8794');s.position.set(i,-0.35,0);s.scale.set(0.5,0.25,1);xT.add(s);
+      s=makeLabel(String(i),'#7f8794');s.position.set(-0.35,i,0);s.scale.set(0.5,0.25,1);yT.add(s);
+      s=makeLabel(String(i),'#7f8794');s.position.set(-0.35,0,i);s.scale.set(0.5,0.25,1);zT.add(s);}
+    scene.add(xT,yT,zT);
+    const markers=new THREE.Group(); scene.add(markers);
+
     function fitOrtho(){const a=app.clientWidth/app.clientHeight;ortho.left=-ORTHO*a;ortho.right=ORTHO*a;ortho.top=ORTHO;ortho.bottom=-ORTHO;ortho.updateProjectionMatrix();}
-    let viewMode=null, pinned=false;
+    let viewMode=null,pinned=false;
     function applyView(mode){
       if(mode!==viewMode){viewMode=mode;
-        if(mode==='2d'){camera=ortho;fitOrtho();makeControls(false);}
-        else{camera=persp;makeControls(true);}}
+        if(mode==='2d'){camera=ortho;fitOrtho();makeControls(false);}else{camera=persp;makeControls(true);}
+        zT.visible=(mode!=='2d');}
       document.querySelectorAll('#modes button').forEach(b=>b.classList.toggle('active',b.dataset.mode===viewMode));
     }
     const autoView=m=>{if(!pinned)applyView(m);};
     document.querySelectorAll('#modes button').forEach(b=>b.addEventListener('click',()=>{pinned=true;applyView(b.dataset.mode);}));
 
-    function sampleGrid(fn,uRange,vRange,ures,vres){
-      const [u0,u1]=uRange,[v0,v1]=vRange;const positions=new Float32Array(ures*vres*3);let p=0;
-      for(let i=0;i<ures;i++){const u=u0+(u1-u0)*(i/(ures-1));
-        for(let j=0;j<vres;j++){const v=v0+(v1-v0)*(j/(vres-1));const [x,y,z]=fn(u,v);positions[p++]=x;positions[p++]=y;positions[p++]=z;}}
-      const indices=new Uint32Array((ures-1)*(vres-1)*6);let q=0;
-      for(let i=0;i<ures-1;i++)for(let j=0;j<vres-1;j++){const a=i*vres+j,b=a+1,c=a+vres,d=c+1;
-        indices[q++]=a;indices[q++]=c;indices[q++]=b;indices[q++]=b;indices[q++]=c;indices[q++]=d;}
-      return {positions,indices};
-    }
-    const bufferGeom=g=>{const G=new THREE.BufferGeometry();G.setAttribute('position',new THREE.BufferAttribute(g.positions,3));G.setIndex(new THREE.BufferAttribute(g.indices,1));G.computeVertexNormals();return G;};
+    function bufferGeom(g){const G=new THREE.BufferGeometry();G.setAttribute('position',new THREE.BufferAttribute(g.positions,3));G.setIndex(new THREE.BufferAttribute(g.indices,1));G.computeVertexNormals();return G;}
+    function sampleGrid(fn,uR,vR,ur,vr){const [u0,u1]=uR,[v0,v1]=vR;const pos=new Float32Array(ur*vr*3);let p=0;
+      for(let i=0;i<ur;i++){const u=u0+(u1-u0)*(i/(ur-1));for(let j=0;j<vr;j++){const v=v0+(v1-v0)*(j/(vr-1));const [x,y,z]=fn(u,v);pos[p++]=x;pos[p++]=y;pos[p++]=z;}}
+      const idx=new Uint32Array((ur-1)*(vr-1)*6);let q=0;
+      for(let i=0;i<ur-1;i++)for(let j=0;j<vr-1;j++){const a=i*vr+j,b=a+1,c=a+vr,d=c+1;idx[q++]=a;idx[q++]=c;idx[q++]=b;idx[q++]=b;idx[q++]=c;idx[q++]=d;}
+      return {positions:pos,indices:idx};}
     const normalMat=new THREE.MeshNormalMaterial({side:THREE.DoubleSide});
     const modelMat=new THREE.MeshStandardMaterial({color:0xdfe6f2,roughness:0.5,metalness:0.05,side:THREE.DoubleSide});
     const lineMat=new THREE.LineBasicMaterial({color:0x5b9cff});
-    const sampleCurve=(fn,range,res)=>{const [a,b]=range;const positions=new Float32Array(res*3);let p=0;
-      for(let i=0;i<res;i++){const x=a+(b-a)*(i/(res-1));const [X,Y,Z]=fn(x);positions[p++]=X;positions[p++]=Y;positions[p++]=Z;}return {positions};};
+    const sampleCurve=(fn,r,res)=>{const [a,b]=r;const pos=new Float32Array(res*3);let p=0;
+      for(let i=0;i<res;i++){const x=a+(b-a)*(i/(res-1));const [X,Y,Z]=fn(x);pos[p++]=X;pos[p++]=Y;pos[p++]=Z;}return {positions:pos};};
 
-    let currentObject=null, model=null;
-    function setObject(obj){if(currentObject){scene.remove(currentObject);currentObject.geometry.dispose();}currentObject=obj;scene.add(obj);}
+    let currentObject=null, model=null, currentEval=null, currentKind=null, scaleX=1, dragIdx=-1, sculpt=false;
+    function setObject(o){if(currentObject){scene.remove(currentObject);currentObject.geometry.dispose();}currentObject=o;scene.add(o);}
 
-    const bar=document.getElementById('bar'),input=document.getElementById('eq'),prefix=bar.querySelector('.prefix'),propsPanel=document.getElementById('props');
+    const rAt=(H,R,h)=>{if(h<=H[0])return R[0];if(h>=H[H.length-1])return R[R.length-1];
+      for(let i=1;i<H.length;i++)if(h<=H[i]){const t=(h-H[i-1])/(H[i]-H[i-1]);return R[i-1]+t*(R[i]-R[i-1]);}return R[R.length-1];};
+    function interpR(cH,cR,h){const n=cH.length;
+      if(h<=cH[0])return cR[0]; if(h>=cH[n-1])return cR[n-1];
+      let i=1; while(i<n-1&&cH[i]<h)i++;
+      const p1=i-1,p2=i,p0=Math.max(0,i-2),p3=Math.min(n-1,i+1),t=(h-cH[p1])/(cH[p2]-cH[p1]);
+      const r0=cR[p0],r1=cR[p1],r2=cR[p2],r3=cR[p3],t2=t*t,t3=t2*t;
+      return 0.5*(2*r1+(-r0+r2)*t+(2*r0-5*r1+4*r2-r3)*t2+(-r0+3*r1-3*r2+r3)*t3);}
+
+    function clearMarkers(){for(const c of markers.children.slice()){markers.remove(c);if(c.geometry)c.geometry.dispose();if(c.material){if(c.material.map)c.material.map.dispose();c.material.dispose();}}}
+    function addMarker(x,y,z,text){
+      const s=new THREE.Mesh(new THREE.SphereGeometry(0.07,16,12),new THREE.MeshBasicMaterial({color:0xffd24a,depthTest:false}));
+      s.renderOrder=2;s.position.set(x,y,z);markers.add(s);
+      const l=makeLabel(text,'#ffd24a',true);l.position.set(x+0.28,y+0.28,z+0.15);markers.add(l);}
+    function findRoots(g,a,b,N=400){const r=[];let pt=a,pv=g(a);
+      for(let i=1;i<=N;i++){const t=a+(b-a)*i/N,v=g(t);if(isFinite(pv)&&isFinite(v)&&pv*v<0)r.push(pt+(t-pt)*(pv/(pv-v)));pt=t;pv=v;}return r;}
+    function updateIntercepts(){clearMarkers();
+      if(currentKind==='curve'){
+        for(const r of findRoots(x=>currentEval(x),-3,3).slice(0,10))addMarker(r,0,0,'x='+r.toFixed(2));
+        const y0=currentEval(0);if(isFinite(y0)&&Math.abs(y0)<=6)addMarker(0,y0,0,'y='+y0.toFixed(2));
+      }else if(currentKind==='surface'){
+        const z0=currentEval(0,0);if(isFinite(z0))addMarker(0,0,z0,'z='+z0.toFixed(2));
+        for(const r of findRoots(x=>currentEval(x,0),-3,3).slice(0,8))addMarker(r,0,0,'x='+r.toFixed(2));
+        for(const r of findRoots(y=>currentEval(0,y),-3,3).slice(0,8))addMarker(0,r,0,'y='+r.toFixed(2));}}
+
+    const bar=document.getElementById('bar'),input=document.getElementById('eq'),prefix=bar.querySelector('.prefix');
+    const inspector=document.getElementById('inspector'),edSvg=document.getElementById('ed-svg');
+    const sRadV=document.getElementById('s-rad-v'),sHgtV=document.getElementById('s-hgt-v');
     function plot(t){
       let usesY,ev;
       try{const sym=new Set(parse(t).filter(n=>n.isSymbolNode).map(n=>n.name));usesY=sym.has('y');
         const code=compile(t);code.evaluate({x:0,y:0});ev=(x,y)=>code.evaluate({x,y});}
       catch(e){bar.classList.add('error');return;}
-      bar.classList.remove('error'); model=null; propsPanel.style.display='none'; targetPoint.set(0,0,0);
-      if(usesY){prefix.textContent='z =';
+      bar.classList.remove('error');model=null;inspector.style.display='none';targetPoint.set(0,0,0);sculpt=false;setSculptUI();
+      if(usesY){prefix.textContent='z =';currentKind='surface';currentEval=(x,y)=>ev(x,y);
         setObject(new THREE.Mesh(bufferGeom(sampleGrid((x,y)=>[x,y,ev(x,y)],[-3,3],[-3,3],70,70)),normalMat));autoView('3d');}
-      else{prefix.textContent='y =';
+      else{prefix.textContent='y =';currentKind='curve';currentEval=x=>ev(x,0);
         const G=new THREE.BufferGeometry();G.setAttribute('position',new THREE.BufferAttribute(sampleCurve(x=>[x,ev(x,0),0],[-3,3],800).positions,3));
         setObject(new THREE.Line(G,lineMat));autoView('2d');}
-      controls.target.copy(targetPoint);
+      controls.target.copy(targetPoint);updateIntercepts();
     }
     input.addEventListener('keydown',e=>{if(e.key==='Enter')plot(input.value.trim());});
 
     const fileInput=document.getElementById('file'),toast=document.getElementById('toast');
-    const showToast=(m,err)=>{toast.textContent=m;toast.style.display='block';toast.style.color=err?'#f0a0a0':'#cdd3dc';};
+    const showToast=(m,err)=>{toast.textContent=m;toast.style.display='block';toast.style.color=err?'#f0a0a0':'var(--dim)';};
     const hideToast=()=>toast.style.display='none';
     document.getElementById('upload').addEventListener('click',()=>fileInput.click());
     fileInput.addEventListener('change',async()=>{
-      const f=fileInput.files[0]; if(!f)return; showToast('processing photo…');
-      try{const fd=new FormData();fd.append('image',f);
-        const res=await fetch('/api/model',{method:'POST',body:fd});
-        if(!res.ok)throw new Error('server '+res.status);
-        hideToast(); showModel(await res.json());
-      }catch(err){showToast('upload failed — is the server running? ('+err.message+')',true);}
+      const f=fileInput.files[0];if(!f)return;showToast('processing photo…');
+      try{const fd=new FormData();fd.append('image',f);const res=await fetch('/api/model',{method:'POST',body:fd});
+        if(!res.ok)throw new Error('server '+res.status);hideToast();showModel(await res.json());}
+      catch(err){showToast('upload failed — is the server running? ('+err.message+')',true);}
       fileInput.value='';
     });
 
+    // ===== photo-model: r(θ,h) grid = base profile + sculpt layer =====
+    const NT=96, NH=140;
     function showModel(prof){
-      let H=prof.heights,R=prof.radii;
-      if(H[0]>H[H.length-1]){H=H.slice().reverse();R=R.slice().reverse();}
-      model={H,R,scale:4/(H[H.length-1]-H[0])};
-      document.getElementById('s-rad').value=1; document.getElementById('s-hgt').value=1;
-      propsPanel.style.display='block'; applyView('3d'); rebuildModel();
-    }
-    const rAt=(H,R,h)=>{if(h<=H[0])return R[0];if(h>=H[H.length-1])return R[R.length-1];
-      for(let i=1;i<H.length;i++)if(h<=H[i]){const t=(h-H[i-1])/(H[i]-H[i-1]);return R[i-1]+t*(R[i]-R[i-1]);}return R[R.length-1];};
-    function rebuildModel(){
-      if(!model)return; const {H,R,scale}=model;
-      const rs=+document.getElementById('s-rad').value,hs=+document.getElementById('s-hgt').value;
+      let H=prof.heights,R=prof.radii; if(H[0]>H[H.length-1]){H=H.slice().reverse();R=R.slice().reverse();}
       const hmin=H[0],hmax=H[H.length-1];
-      setObject(new THREE.Mesh(bufferGeom(sampleGrid((th,h)=>{const r=rAt(H,R,h)*rs*scale,z=(h-hmin)*hs*scale;return [r*Math.cos(th),r*Math.sin(th),z];},[0,Math.PI*2],[hmin,hmax],96,160)),modelMat));
-      targetPoint.set(0,0,(hmax-hmin)*hs*scale/2); controls.target.copy(targetPoint); updateProps(rs,hs);
+      const baseH=[],baseR=[];
+      for(let j=0;j<NH;j++){const h=hmin+(hmax-hmin)*j/(NH-1);baseH.push(h);baseR.push(rAt(H,R,h));}
+      const NC=20,cH=[],cR=[];
+      for(let k=0;k<NC;k++){const h=hmin+(hmax-hmin)*k/(NC-1);cH.push(h);cR.push(rAt(H,R,h));}
+      scaleX=76/Math.max(...baseR);
+      const Rgrid=Array.from({length:NT},()=>new Float64Array(NH));
+      const off=Array.from({length:NT},()=>new Float64Array(NH));
+      model={baseH,baseR,cH,cR,cR0:cR.slice(),cDelta:new Array(NC).fill(0),hmin,hmax,nT:NT,nH:NH,Rgrid,off,mmPerPx:0,scale:4/(hmax-hmin)};
+      document.getElementById('cal-h').value='';
+      currentKind='model'; clearMarkers(); sculpt=false; setSculptUI();
+      document.getElementById('s-rad').value=1; document.getElementById('s-hgt').value=1;
+      inspector.style.display='flex';
+      applyView('3d'); rebuildModel(); drawEditor();
     }
-    document.getElementById('s-rad').addEventListener('input',rebuildModel);
-    document.getElementById('s-hgt').addEventListener('input',rebuildModel);
-    function updateProps(rs,hs){
-      const {H,R}=model;const hmin=H[0],hmax=H[H.length-1];
-      const hgt=(hmax-hmin)*hs,maxR=Math.max(...R)*rs,baseR=R[0]*rs,neckR=Math.min(...R.slice(Math.floor(R.length*0.6)))*rs;
-      let vol=0;for(let i=1;i<H.length;i++){const dh=(H[i]-H[i-1])*hs,rm=((R[i]+R[i-1])/2)*rs;vol+=Math.PI*rm*rm*dh;}
-      const px=v=>Math.round(v)+' px',set=(id,t)=>document.getElementById(id).textContent=t;
-      set('p-height',px(hgt));set('p-maxd',px(maxR*2));set('p-based',px(baseR*2));set('p-neckd',px(neckR*2));set('p-vol',(vol/1e6).toFixed(2)+' Mpx³');
-    }
+    function profileAt(h){return Math.max(0, rAt(model.baseH,model.baseR,h)+interpR(model.cH,model.cDelta,h));}
+    function composeGrid(){const {baseH,Rgrid,off,nT,nH}=model;            // base profile + sculpt layer
+      for(let j=0;j<nH;j++){const v=profileAt(baseH[j]);for(let i=0;i<nT;i++)Rgrid[i][j]=Math.max(0,v+off[i][j]);}}
+    function revolveGrid(rs,hs,sc){const {Rgrid,hmin,hmax,nT,nH}=model;
+      const pos=new Float32Array(nT*nH*3);let p=0;
+      for(let i=0;i<nT;i++){const th=2*Math.PI*i/nT,ct=Math.cos(th),st=Math.sin(th);
+        for(let j=0;j<nH;j++){const r=Math.max(0,Rgrid[i][j])*rs*sc,z=(hmax-hmin)*(j/(nH-1))*hs*sc;pos[p++]=r*ct;pos[p++]=r*st;pos[p++]=z;}}
+      const idx=new Uint32Array(nT*(nH-1)*6);let q=0;
+      for(let i=0;i<nT;i++){const ni=(i+1)%nT;for(let j=0;j<nH-1;j++){const a=i*nH+j,b=a+1,c=ni*nH+j,d=c+1;
+        idx[q++]=a;idx[q++]=c;idx[q++]=b;idx[q++]=b;idx[q++]=c;idx[q++]=d;}}
+      return {positions:pos,indices:idx};}
+    function rebuildMesh(){const rs=+document.getElementById('s-rad').value,hs=+document.getElementById('s-hgt').value;
+      if(sRadV)sRadV.textContent=rs.toFixed(2)+'×'; if(sHgtV)sHgtV.textContent=hs.toFixed(2)+'×';
+      setObject(new THREE.Mesh(bufferGeom(revolveGrid(rs,hs,model.scale)),modelMat));
+      targetPoint.set(0,0,(model.hmax-model.hmin)*hs*model.scale/2);controls.target.copy(targetPoint);updateProps(rs,hs);}
+    function rebuildModel(){if(!model)return;model.cDelta=model.cR.map((v,i)=>v-model.cR0[i]);composeGrid();rebuildMesh();}
+    document.getElementById('s-rad').addEventListener('input',rebuildMesh);
+    document.getElementById('s-hgt').addEventListener('input',rebuildMesh);
+    document.getElementById('cal-h').addEventListener('input',()=>{if(!model)return;
+      const cm=parseFloat(document.getElementById('cal-h').value);
+      model.mmPerPx=(cm>0)?(cm*10)/(model.hmax-model.hmin):0;
+      updateProps(+document.getElementById('s-rad').value,+document.getElementById('s-hgt').value);});
+    function updateProps(rs,hs){const {Rgrid,hmin,hmax,nT,nH}=model;
+      const dth=2*Math.PI/nT,dh=(hmax-hmin)/(nH-1)*hs;
+      let vol=0,maxR=0,baseSum=0;
+      for(let i=0;i<nT;i++){baseSum+=Rgrid[i][0];
+        for(let j=0;j<nH;j++){const r=Math.max(0,Rgrid[i][j])*rs;if(r>maxR)maxR=r;vol+=0.5*r*r*dth*dh;}}   // V = ½∬r²dθdh
+      let neck=Infinity;for(let j=Math.floor(nH*0.6);j<nH;j++){let m=0;for(let i=0;i<nT;i++)m+=Rgrid[i][j];m=(m/nT)*rs;if(m<neck)neck=m;}
+      const baseR=(baseSum/nT)*rs,hgt=(hmax-hmin)*hs,mpp=model.mmPerPx||0;
+      const set=(id,t)=>document.getElementById(id).textContent=t;
+      if(mpp>0){const cm=v=>(v*mpp/10).toFixed(2)+' cm';                  // px → mm → cm
+        set('p-height',cm(hgt));set('p-maxd',cm(maxR*2));set('p-based',cm(baseR*2));set('p-neckd',cm(neck*2));
+        set('p-vol',(vol*mpp*mpp*mpp/1000).toFixed(1)+' mL');}            // px³ → mm³ → mL
+      else{const px=v=>Math.round(v)+' px';
+        set('p-height',px(hgt));set('p-maxd',px(maxR*2));set('p-based',px(baseR*2));set('p-neckd',px(neck*2));
+        set('p-vol',(vol/1e6).toFixed(2)+' Mpx³');}}
+
+    // --- 2D profile editor (edits the symmetric base) ---
+    const yTop=14,yBot=346;
+    const yOf=h=>yBot-(h-model.hmin)/(model.hmax-model.hmin)*(yBot-yTop);
+    function drawEditor(){if(!model)return;const N=80;let rp='',lp='';
+      for(let k=0;k<=N;k++){const h=model.hmin+(model.hmax-model.hmin)*k/N,r=profileAt(h),y=yOf(h);
+        rp+=`${(90+r*scaleX).toFixed(1)},${y.toFixed(1)} `;lp+=`${(90-r*scaleX).toFixed(1)},${y.toFixed(1)} `;}
+      let s=`<line x1="90" y1="${yTop}" x2="90" y2="${yBot}" stroke="#39414f" stroke-width="1" stroke-dasharray="3 3"/>`;
+      s+=`<polyline points="${lp}" fill="none" stroke="#5b9cff" stroke-width="1.5"/><polyline points="${rp}" fill="none" stroke="#5b9cff" stroke-width="1.5"/>`;
+      for(let i=0;i<model.cH.length;i++){const x=90+Math.max(0,model.cR[i])*scaleX,y=yOf(model.cH[i]);
+        s+=`<circle data-i="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="#ffd24a" stroke="#1a1d24" stroke-width="1.5" style="cursor:ew-resize"/>`;}
+      edSvg.innerHTML=s;}
+    edSvg.addEventListener('pointerdown',e=>{if(e.target.tagName==='circle'){dragIdx=+e.target.dataset.i;edSvg.setPointerCapture(e.pointerId);e.preventDefault();}});
+    edSvg.addEventListener('pointermove',e=>{if(dragIdx<0||!model)return;const rect=edSvg.getBoundingClientRect();
+      const sx=(e.clientX-rect.left)*(180/rect.width);model.cR[dragIdx]=Math.max(0,(sx-90)/scaleX);rebuildModel();drawEditor();});
+    edSvg.addEventListener('pointerup',()=>{dragIdx=-1;});edSvg.addEventListener('pointercancel',()=>{dragIdx=-1;});
+    document.getElementById('ed-reset').addEventListener('click',()=>{if(!model)return;model.cR=model.cR0.slice();for(const row of model.off)row.fill(0);rebuildModel();drawEditor();});
+
+    // --- 3D sculpt (asymmetric pull, writes to the offset layer) ---
+    function setSculptUI(){const b=document.getElementById('ed-sculpt');if(!b)return;
+      b.textContent=sculpt?'Sculpting':'Sculpt';b.classList.toggle('on',sculpt);if(controls)controls.enableRotate=!sculpt;}
+    document.getElementById('ed-sculpt').addEventListener('click',()=>{sculpt=!sculpt;setSculptUI();});
+    const raycaster=new THREE.Raycaster(), ptr=new THREE.Vector2(); let sStart=null;
+    function gridRadius(theta,h){const {Rgrid,hmin,hmax,nT,nH}=model;
+      let i=Math.round(theta/(2*Math.PI)*nT);i=((i%nT)+nT)%nT;
+      let j=Math.round((h-hmin)/(hmax-hmin)*(nH-1));j=Math.max(0,Math.min(nH-1,j));return Rgrid[i][j];}
+    function applyBrush(theta0,h0,delta,snapOff){const {off,hmin,hmax,nT,nH}=model;const sigT=0.5,sigH=0.12*(hmax-hmin);
+      for(let i=0;i<nT;i++){const th=2*Math.PI*i/nT;let dth=th-theta0;while(dth>Math.PI)dth-=2*Math.PI;while(dth<-Math.PI)dth+=2*Math.PI;
+        const wt=Math.exp(-(dth*dth)/(sigT*sigT));if(wt<0.02)continue;
+        for(let j=0;j<nH;j++){const h=hmin+(hmax-hmin)*j/(nH-1),dh=h-h0;off[i][j]=snapOff[i][j]+delta*wt*Math.exp(-(dh*dh)/(sigH*sigH));}}
+      composeGrid();}
+    const canvas=renderer.domElement;
+    canvas.addEventListener('pointerdown',e=>{
+      if(!sculpt||!model||currentKind!=='model'||e.button!==0)return;
+      const rect=canvas.getBoundingClientRect();
+      ptr.x=((e.clientX-rect.left)/rect.width)*2-1;ptr.y=-((e.clientY-rect.top)/rect.height)*2+1;
+      raycaster.setFromCamera(ptr,camera);
+      const hits=raycaster.intersectObject(currentObject,false);if(!hits.length)return;
+      const P=hits[0].point,theta0=Math.atan2(P.y,P.x),hs=+document.getElementById('s-hgt').value;
+      const h0=model.hmin+P.z/(model.scale*hs);
+      sStart={theta0,h0,r0:gridRadius(theta0,h0),snapOff:model.off.map(r=>Float64Array.from(r))};
+      canvas.setPointerCapture(e.pointerId);e.preventDefault();
+    });
+    canvas.addEventListener('pointermove',e=>{
+      if(!sStart)return;const rect=canvas.getBoundingClientRect();
+      ptr.x=((e.clientX-rect.left)/rect.width)*2-1;ptr.y=-((e.clientY-rect.top)/rect.height)*2+1;
+      raycaster.setFromCamera(ptr,camera);const ray=raycaster.ray;
+      const th=sStart.theta0,n=new THREE.Vector3(-Math.sin(th),Math.cos(th),0),den=ray.direction.dot(n);
+      if(Math.abs(den)<1e-6)return;const t=-(ray.origin.dot(n))/den;if(t<0)return;
+      const Q=ray.origin.clone().addScaledVector(ray.direction,t);
+      const rWorld=Q.x*Math.cos(th)+Q.y*Math.sin(th),rs=+document.getElementById('s-rad').value;
+      const targetR=rWorld/(model.scale*rs);if(!isFinite(targetR))return;
+      applyBrush(sStart.theta0,sStart.h0,targetR-sStart.r0,sStart.snapOff);rebuildMesh();
+    });
+    const endSc=e=>{if(sStart){sStart=null;try{canvas.releasePointerCapture(e.pointerId);}catch(_){}}};
+    canvas.addEventListener('pointerup',endSc);canvas.addEventListener('pointercancel',endSc);
+
+    // --- export (mm when calibrated, else px; angular seam closed, ends open) ---
+    document.getElementById('export').addEventListener('click',()=>{
+      if(!model)return;const {Rgrid,hmin,hmax,nT,nH}=model;
+      const rs=+document.getElementById('s-rad').value,hs=+document.getElementById('s-hgt').value,mpp=model.mmPerPx||1;
+      const pos=new Float32Array(nT*nH*3);let p=0;
+      for(let i=0;i<nT;i++){const th=2*Math.PI*i/nT,ct=Math.cos(th),st=Math.sin(th);
+        for(let j=0;j<nH;j++){const r=Math.max(0,Rgrid[i][j])*rs*mpp,z=(hmax-hmin)*(j/(nH-1))*hs*mpp;pos[p++]=r*ct;pos[p++]=r*st;pos[p++]=z;}}
+      const idx=new Uint32Array(nT*(nH-1)*6);let q=0;
+      for(let i=0;i<nT;i++){const ni=(i+1)%nT;for(let j=0;j<nH-1;j++){const a=i*nH+j,b=a+1,c=ni*nH+j,d=c+1;idx[q++]=a;idx[q++]=c;idx[q++]=b;idx[q++]=b;idx[q++]=c;idx[q++]=d;}}
+      const geom=bufferGeom({positions:pos,indices:idx});
+      const stl=new STLExporter().parse(new THREE.Mesh(geom),{binary:true});
+      const blob=new Blob([stl],{type:'application/octet-stream'});const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download='model.stl';a.click();URL.revokeObjectURL(url);geom.dispose();
+    });
 
     input.value='sin(sqrt(x^2 + y^2) * 3) * 0.6'; plot(input.value);
     (function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);})();
