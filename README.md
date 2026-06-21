@@ -115,6 +115,10 @@ flowchart LR
     GRID --> SAMP
 ```
 
+<img width="1873" height="1141" alt="image" src="https://github.com/user-attachments/assets/65b47c3e-d243-4280-9c4c-70e339ff6d77" />
+<img width="1873" height="1141" alt="image" src="https://github.com/user-attachments/assets/small-plastic-water-bottle-isolated-white-background-small-plastic-water-bottle-355782998.webp" />
+
+
 **One geometry contract.** Every producer emits `{ positions: Float32Array, indices: Uint32Array }`, consumed by a single renderer. A shared `sampleGrid(fn, uRange, vRange, uRes, vRes)` walks a parameter grid and triangulates it; the only thing that changes is the function:
 - surface → `(x, y) ⇒ [x, y, f(x,y)]`
 - curve → `x ⇒ [x, f(x), 0]` (drawn as a line)
